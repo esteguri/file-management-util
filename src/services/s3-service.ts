@@ -15,14 +15,16 @@ export class S3Service {
    * @param key - Nombre/ruta del archivo en S3
    * @param body - Contenido del archivo (Buffer, string, stream)
    * @param contentType - Tipo de contenido del archivo
+   * @param metadata - Metadatos del archivo (pares clave-valor)
    * @returns Promise con el resultado de la operación
    */
-  async uploadFile(key: string, body: Buffer | string | Readable, contentType?: string) {
+  async uploadFile(key: string, body: Buffer | string | Readable, contentType?: string, metadata?: Record<string, string>) {
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
       Body: body,
-      ContentType: contentType
+      ContentType: contentType,
+      Metadata: metadata
     });
 
     try {
@@ -30,7 +32,8 @@ export class S3Service {
       return {
         success: true,
         key,
-        response
+        response,
+        metadata
       };
     } catch (error) {
       console.error('Error al subir archivo a S3:', error);
@@ -43,17 +46,18 @@ export class S3Service {
    * @param key - Nombre/ruta del archivo en S3
    * @param filePath - Ruta local del archivo
    * @param contentType - Tipo de contenido del archivo
+   * @param metadata - Metadatos del archivo (pares clave-valor)
    * @returns Promise con el resultado de la operación
    */
-  async uploadFileFromPath(key: string, filePath: string, contentType?: string) {
+  async uploadFileFromPath(key: string, filePath: string, contentType?: string, metadata?: Record<string, string>) {
     const fileStream = createReadStream(filePath);
-    return this.uploadFile(key, fileStream, contentType);
+    return this.uploadFile(key, fileStream, contentType, metadata);
   }
 
   /**
    * Obtiene un archivo de S3
    * @param key - Nombre/ruta del archivo en S3
-   * @returns Promise con el contenido del archivo
+   * @returns Promise con el contenido del archivo y sus metadatos
    */
   async getFile(key: string) {
     const command = new GetObjectCommand({
@@ -62,11 +66,26 @@ export class S3Service {
     });
 
     try {
-      return await s3Client.send(command);
+      const response = await s3Client.send(command);
+      // Los metadatos están disponibles en response.Metadata
+      return response;
     } catch (error) {
       console.error('Error al obtener archivo de S3:', error);
       throw error;
     }
+  }
+
+  /**
+   * Obtiene los metadatos de un archivo en S3
+   * @param key - Nombre/ruta del archivo en S3
+   * @returns Promise con los metadatos del archivo
+   */
+  async getMetadata(key: string) {
+    const response = await this.getFile(key);
+    return {
+      key,
+      metadata: response.Metadata || {}
+    };
   }
 
   /**

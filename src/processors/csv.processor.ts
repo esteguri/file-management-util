@@ -2,6 +2,10 @@ import * as FastCsv from "fast-csv";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+type CsvRow = {
+  [key: string]: string;
+};
+
 type CsvProcessOptions<T> = FastCsv.ParserOptionsArgs & {
   skipInvalidRows?: boolean;
   onHeaders?: (headers: string[]) => void;
@@ -22,15 +26,15 @@ type BuildParserParams<T> = {
   onEndEvent: () => Promise<void>;
 };
 
-const processByChunks = async <T = object>(
+const processByChunks = async (
   stream: string | Buffer | Readable | ReadableStream,
-  options: CsvProcessStreamOptions<T>
+  options: CsvProcessStreamOptions<CsvRow>
 ) => {
-  const rows: T[] = [];
+  const rows: CsvRow[] = [];
 
-  const parser = buildParser<T>({
+  const parser = buildParser<CsvRow>({
     options,
-    onDataEvent: async (row: T) => {
+    onDataEvent: async (row) => {
       rows.push(row);
       await options.onRow?.(row);
       if (rows.length >= options.batchSize) {
@@ -42,6 +46,23 @@ const processByChunks = async <T = object>(
       if (rows.length > 0) {
         await options.onChunk(rows);
       }
+    },
+  });
+
+  await pipeline(stream, parser);
+};
+
+const process = async (
+  stream: string | Buffer | Readable | ReadableStream,
+  options: CsvProcessOptions<CsvRow>
+) => {
+  const parser = buildParser<CsvRow>({
+    options,
+    onDataEvent: async (row) => {
+      await options.onRow?.(row);
+    },
+    onEndEvent: async () => {
+      await options.onFinish?.();
     },
   });
 
@@ -77,80 +98,6 @@ const buildParser = <T>({
 };
 
 export const CsvProcessor = {
-  processByChunks: async <T = object>(
-    stream: string | Buffer | Readable | ReadableStream,
-    options: CsvProcessStreamOptions<T>
-  ) => {
-    const rows: T[] = [];
-
-    const parser = FastCsv.parse(options)
-      .validate((row: object) => options.onValidate?.(row as T) ?? true)
-      .on("headers", (headers) => {
-        options.onHeaders?.(headers);
-      })
-      .on("data", async (row) => {
-        rows.push(row);
-        await options.onRow?.(row);
-        if (rows.length >= options.batchSize) {
-          await options.onChunk(rows.splice(0, options.batchSize));
-        }
-      })
-      .on("data-invalid", (row: T, rowNumber: number) => {
-        console.log(
-          `Invalid [rowNumber=${rowNumber}] [row=${JSON.stringify(row)}]`
-        );
-
-        options.onDataInvalid?.(row, rowNumber);
-
-        if (!Boolean(options.skipInvalidRows ?? false)) {
-          throw new Error(`Invalid row [rowNumber=${rowNumber}]`);
-        }
-      })
-      .on("end", async () => {
-        await options.onFinish?.();
-        if (rows.length > 0) {
-          await options.onChunk(rows);
-        }
-        console.log("CSV processing finished");
-      })
-      .on("error", (error) => {
-        console.error("Ocurrio un error procesando el archivo", error.message);
-      });
-
-    await pipeline(stream, parser);
-  },
-
-  process: async <T = object>(
-    stream: string | Buffer | Readable | ReadableStream,
-    options: CsvProcessOptions<T>
-  ) => {
-    const parser = FastCsv.parse(options)
-      .validate((row: object) => options.onValidate?.(row as T) ?? true)
-      .on("headers", (headers) => {
-        options.onHeaders?.(headers);
-      })
-      .on("data", async (row) => {
-        await options.onRow?.(row);
-      })
-      .on("data-invalid", (row: T, rowNumber: number) => {
-        console.log(
-          `Invalid [rowNumber=${rowNumber}] [row=${JSON.stringify(row)}]`
-        );
-
-        options.onDataInvalid?.(row, rowNumber);
-
-        if (!Boolean(options.skipInvalidRows ?? false)) {
-          throw new Error(`Invalid row [rowNumber=${rowNumber}]`);
-        }
-      })
-      .on("end", async () => {
-        await options.onFinish?.();
-        console.log("CSV processing finished");
-      })
-      .on("error", (error) => {
-        console.error("Ocurrio un error procesando el archivo", error.message);
-      });
-
-    await pipeline(stream, parser);
-  },
+  processByChunks,
+  process,
 };

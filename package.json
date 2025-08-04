@@ -1,10 +1,10 @@
 {
   "name": "file-management-util",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "build": "tsc",
-    "start": "ts-node -r dotenv/config src/index.ts",
+    "start": "ts-node -r dotenv/config src/main.ts",
     "clean": "rm -rf dist"
   },
   "keywords": [],
@@ -21,7 +21,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.857.0",
     "@aws-sdk/s3-request-presigner": "^3.857.0",
-    "csv-parse": "^6.1.0",
     "dotenv": "^17.2.1",
     "fast-csv": "^5.0.2"
   }
