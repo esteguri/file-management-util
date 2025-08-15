@@ -1,38 +1,17 @@
 import { ReadStream } from "fs";
 import { Readable } from "stream";
-
-// Tipos para los callbacks y configuraciones
-export type FileProcessorOptions = FileProcessorCallbacks & {
-  hasHeader?: boolean;
-  skipInvalid?: boolean;
-  encoding?: BufferEncoding;
-};
-
-export type FileProcessorCallbacks = {
-  onHeader?: (header: string) => void | Promise<void>;
-  onRow?: (row: string, index: number) => void | Promise<void>;
-  onFinish?: (totalRows: number) => void | Promise<void>;
-  onValidate?: (row: string, index: number) => boolean | Promise<boolean>;
-  onDataInvalid?: (
-    row: string,
-    index: number,
-    error?: any
-  ) => void | Promise<void>;
-};
-
-export type FileProcessorChunkOptions = FileProcessorOptions & {
-  batchSize: number;
-  onChunk: (chunk: string[], chunkIndex: number) => void | Promise<void>;
-};
-
-export type StreamInput = ReadStream | ReadableStream | Readable | string;
+import {
+  FileProcessorChunkOptions,
+  FileProcessorOptions,
+  StreamInput,
+} from "./file.processor.type";
 
 class FileProcessorClass {
   private static readonly DEFAULT_ENCODING: BufferEncoding = "utf8";
   private static readonly LINE_BREAK_REGEX = /\r\n|\r|\n/;
 
   /**
-   * Lee todo el archivo de manera eficiente línea por línea
+   * Reads the entire file efficiently line by line
    */
   public static async read(
     input: StreamInput,
@@ -123,7 +102,7 @@ class FileProcessorClass {
   }
 
   /**
-   * Lee el archivo por chunks/lotes de tamaño específico
+   * Reads the file in chunks/batches of specific size
    */
   public static async readByChunks(
     input: StreamInput,
@@ -239,7 +218,7 @@ class FileProcessorClass {
   }
 
   /**
-   * Creates an appropriate stream based on the input type
+   * Creates an appropriate Node.js Readable stream from various input types (ReadableStream, ReadStream, or Readable)
    */
   private static createStream(input: StreamInput): Readable {
     if (input instanceof ReadableStream) {
@@ -253,13 +232,11 @@ class FileProcessorClass {
       return input;
     } else {
       throw new Error(
-        "Unsupported input type. Expected string, ReadStream, Readable, or ReadableStream."
+        "Unsupported input type. Expected string, ReadStream, Readable, ReadableStream or object with transformToWebStream method."
       );
     }
   }
 }
-
-// Funciones de conveniencia para uso directo
 
 export const FileProcessor = {
   read: FileProcessorClass.read.bind(FileProcessorClass),

@@ -1,6 +1,5 @@
+import { FileProcessor } from "./processors/file-processor/file.processor";
 import { s3Service } from "./services/s3-service";
-import { CsvProcessor } from "./processors/csv.processor";
-import { FileProcessor } from "./processors/file.processor";
 
 console.log("¡Hola desde TypeScript!");
 console.log("Bucket name:", process.env.BUCKET_NAME);
@@ -93,10 +92,10 @@ export async function leerCSV(s3Key: string) {
     },
   });*/
 
-  await FileProcessor.readByChunks(await s3Response.Body.transformToString(), {
+  await FileProcessor.readByChunks(s3Response.Body, {
     batchSize: 10,
     onChunk: (chunk, index) => {
-      console.log("onChunk", index);
+      console.log("onChunk", index, chunk.length);
     },
   });
 }
