@@ -17,7 +17,7 @@ type CsvProcessOptions<T> = FastCsv.ParserOptionsArgs & {
 
 type CsvProcessStreamOptions<T> = CsvProcessOptions<T> & {
   batchSize: number;
-  onChunk: (rows: T[]) => Promise<void>;
+  onChunk: (rows: T[]) => void | Promise<void>;
 };
 
 type BuildParserParams<T> = {

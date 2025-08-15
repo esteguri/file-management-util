@@ -1,5 +1,6 @@
 import { s3Service } from "./services/s3-service";
 import { CsvProcessor } from "./processors/csv.processor";
+import { FileProcessor } from "./processors/file.processor";
 
 console.log("¡Hola desde TypeScript!");
 console.log("Bucket name:", process.env.BUCKET_NAME);
@@ -24,8 +25,8 @@ export async function cargarAS3(
     // Si no se proporcionan metadatos, crear algunos por defecto
     const metadataToUse = metadata || {
       uploadDate: new Date().toISOString(),
-      fileName: filePath.split('/').pop() || '',
-      fileType: contentType
+      fileName: filePath.split("/").pop() || "",
+      fileType: contentType,
     };
 
     const resultado = await s3Service.uploadFileFromPath(
@@ -64,7 +65,7 @@ export async function leerCSV(s3Key: string) {
 
   // Mostrar los metadatos del archivo
   console.log("Metadatos del archivo:", s3Response.Metadata);
-
+  /*
   await CsvProcessor.processByChunks(s3Response.Body.transformToWebStream(), {
     batchSize: 10,
     headers: true,
@@ -82,6 +83,20 @@ export async function leerCSV(s3Key: string) {
       console.log("onChunk start", rows.length, "=".repeat(6));
       console.log(rows.map((row) => JSON.stringify(row)));
       console.log("onChunk end", "=".repeat(6));
+    },
+  });
+
+  await CsvProcessor.processByChunks(s3Response.Body.transformToWebStream(), {
+    batchSize: 10,
+    onChunk: (rows) => {
+      console.log("onChunk", rows.length);
+    },
+  });*/
+
+  await FileProcessor.readByChunks(await s3Response.Body.transformToString(), {
+    batchSize: 10,
+    onChunk: (chunk, index) => {
+      console.log("onChunk", index);
     },
   });
 }
