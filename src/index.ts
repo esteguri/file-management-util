@@ -93,9 +93,26 @@ export async function leerCSV(s3Key: string) {
   });*/
 
   await FileProcessor.readByChunks(s3Response.Body, {
+    hasHeader: true,
     batchSize: 10,
+    skipInvalid: true,
+    onValidate: (row) => {
+      return !row.includes("Esteban");
+    },
+    onDataInvalid(row, rowNumber) {
+      console.log("onDataInvalid", row, rowNumber);
+    },
+    onHeader(header) {
+      console.log("onHeader", header);
+    },
+    onRow(row, index) {
+      console.log("onRow", index, row);
+    },
     onChunk: (chunk, index) => {
       console.log("onChunk", index, chunk.length);
+    },
+    onFinish: (totalRows) => {
+      console.log("onFinish", totalRows);
     },
   });
 }
