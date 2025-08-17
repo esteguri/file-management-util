@@ -136,7 +136,7 @@ describe("FileProcessor.readInChunks", () => {
       FileProcessor.readInChunks(input, {
         batchSize: 0,
         onChunk: jest.fn(),
-      } as any)
+      })
     ).rejects.toThrow("batchSize must be greater than 0");
   });
 
