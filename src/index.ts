@@ -92,7 +92,7 @@ export async function leerCSV(s3Key: string) {
     },
   });*/
 
-  await FileProcessor.readByChunks(s3Response.Body, {
+  await FileProcessor.readInChunks(s3Response.Body, {
     hasHeader: true,
     batchSize: 10,
     skipInvalid: true,
