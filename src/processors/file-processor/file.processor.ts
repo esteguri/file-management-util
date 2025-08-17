@@ -20,10 +20,10 @@ class FileProcessorClass {
     const stream = this.createStream(input);
     const { hasHeader = false, skipInvalid = false } = options;
 
-    let buffer = "";
-    let rowIndex = 0;
-    let isFirstRow = true;
-    let totalRows = 0;
+    let buffer = "",
+      rowIndex = 0,
+      isFirstRow = true,
+      totalRows = 0;
 
     return new Promise((resolve, reject) => {
       stream.on("data", async (chunk: Buffer | string) => {
@@ -114,14 +114,19 @@ class FileProcessorClass {
     }
 
     const stream = this.createStream(input);
-    const { hasHeader = false, skipInvalid = false } = options;
+    const {
+      hasHeader = false,
+      skipInvalid = false,
+      stopOnChunkError = true,
+    } = options;
 
-    let buffer = "";
-    let rowIndex = 0;
-    let chunkIndex = 0;
-    let currentChunk: string[] = [];
-    let isFirstRow = true;
-    let totalRows = 0;
+    let buffer = "",
+      rowIndex = 0,
+      chunkIndex = 1,
+      currentChunk: string[] = [],
+      isFirstRow = true,
+      totalRows = 0,
+      failedChunks = 0;
 
     return new Promise((resolve, reject) => {
       stream.on("data", async (chunk: Buffer | string) => {
@@ -164,10 +169,15 @@ class FileProcessorClass {
 
             // Process chunk when it reaches the desired size
             if (currentChunk.length >= options.batchSize) {
-              await this.runOnChunk(currentChunk, chunkIndex, options);
-
-              currentChunk = [];
-              chunkIndex++;
+              await this.runOnChunk(currentChunk, chunkIndex, options)
+                .catch((error) => {
+                  failedChunks++;
+                  throw error;
+                })
+                .finally(() => {
+                  currentChunk = [];
+                  chunkIndex++;
+                });
             }
           }
         } catch (error) {
@@ -177,8 +187,10 @@ class FileProcessorClass {
 
       stream.on("end", async () => {
         try {
+          const stopProcessing = stopOnChunkError && failedChunks > 0;
+
           // Process last line if it exists
-          if (buffer.trim()) {
+          if (!stopProcessing && buffer.trim()) {
             if (options.onValidate) {
               const isValid = await options.onValidate(buffer, rowIndex);
               if (!isValid) {
@@ -201,7 +213,8 @@ class FileProcessorClass {
           }
 
           // Process final chunk if it contains data
-          if (currentChunk.length > 0) {
+          if (!stopProcessing && currentChunk.length > 0) {
+            console.log("ultimo chunk", currentChunk);
             await this.runOnChunk(currentChunk, chunkIndex, options);
           }
 
