@@ -1,10 +1,14 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client } from './s3-client';
-import { Readable } from 'stream';
-import { createReadStream } from 'fs';
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3Client } from "./s3-client";
+import { Readable } from "stream";
+import { createReadStream } from "fs";
 
-const bucketName = process.env.BUCKET_NAME || 'file-management-bucket';
+const bucketName = process.env.BUCKET_NAME || "file-management-bucket";
 
 /**
  * Servicio para gestionar operaciones con archivos en S3
@@ -18,13 +22,18 @@ export class S3Service {
    * @param metadata - Metadatos del archivo (pares clave-valor)
    * @returns Promise con el resultado de la operación
    */
-  async uploadFile(key: string, body: Buffer | string | Readable, contentType?: string, metadata?: Record<string, string>) {
+  async uploadFile(
+    key: string,
+    body: Buffer | string | Readable,
+    contentType?: string,
+    metadata?: Record<string, string>
+  ) {
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
       Body: body,
       ContentType: contentType,
-      Metadata: metadata
+      Metadata: metadata,
     });
 
     try {
@@ -33,10 +42,10 @@ export class S3Service {
         success: true,
         key,
         response,
-        metadata
+        metadata,
       };
     } catch (error) {
-      console.error('Error al subir archivo a S3:', error);
+      console.error("Error al subir archivo a S3:", error);
       throw error;
     }
   }
@@ -49,7 +58,12 @@ export class S3Service {
    * @param metadata - Metadatos del archivo (pares clave-valor)
    * @returns Promise con el resultado de la operación
    */
-  async uploadFileFromPath(key: string, filePath: string, contentType?: string, metadata?: Record<string, string>) {
+  async uploadFileFromPath(
+    key: string,
+    filePath: string,
+    contentType?: string,
+    metadata?: Record<string, string>
+  ) {
     const fileStream = createReadStream(filePath);
     return this.uploadFile(key, fileStream, contentType, metadata);
   }
@@ -62,7 +76,7 @@ export class S3Service {
   async getFile(key: string) {
     const command = new GetObjectCommand({
       Bucket: bucketName,
-      Key: key
+      Key: key,
     });
 
     try {
@@ -70,7 +84,7 @@ export class S3Service {
       // Los metadatos están disponibles en response.Metadata
       return response;
     } catch (error) {
-      console.error('Error al obtener archivo de S3:', error);
+      console.error("Error al obtener archivo de S3:", error);
       throw error;
     }
   }
@@ -84,7 +98,7 @@ export class S3Service {
     const response = await this.getFile(key);
     return {
       key,
-      metadata: response.Metadata || {}
+      metadata: response.Metadata || {},
     };
   }
 
@@ -97,7 +111,7 @@ export class S3Service {
   async getSignedUrl(key: string, expiresIn = 3600) {
     const command = new GetObjectCommand({
       Bucket: bucketName,
-      Key: key
+      Key: key,
     });
 
     try {
@@ -105,10 +119,10 @@ export class S3Service {
       return {
         success: true,
         key,
-        signedUrl
+        signedUrl,
       };
     } catch (error) {
-      console.error('Error al generar URL prefirmada:', error);
+      console.error("Error al generar URL prefirmada:", error);
       throw error;
     }
   }
@@ -121,7 +135,7 @@ export class S3Service {
   async deleteFile(key: string) {
     const command = new DeleteObjectCommand({
       Bucket: bucketName,
-      Key: key
+      Key: key,
     });
 
     try {
@@ -129,10 +143,10 @@ export class S3Service {
       return {
         success: true,
         key,
-        response
+        response,
       };
     } catch (error) {
-      console.error('Error al eliminar archivo de S3:', error);
+      console.error("Error al eliminar archivo de S3:", error);
       throw error;
     }
   }

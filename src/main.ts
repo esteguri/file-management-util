@@ -1,11 +1,12 @@
 import { join } from "path";
-import { cargarAS3, leerCSV } from ".";
+import { cargarAS3, cargarNDJSON, leerCSV } from ".";
 
 async function probarCsv() {
   // Crear directorio data si no existe
   const dataDir = join(process.cwd(), "data");
   // Ruta al archivo CSV
-  const s3Key = "usuarios-size.csv";
+  //const s3Key = "usuarios-size.csv";
+  const s3Key = "usuarios-size.ndjson";
   const csvFilePath = join(dataDir, s3Key);
 
   try {
@@ -17,7 +18,8 @@ async function probarCsv() {
       createdAt: new Date().toISOString(),
     };
 
-    await cargarAS3(csvFilePath, s3Key, "text/csv", metadata);
+    //await cargarAS3(csvFilePath, s3Key, "text/csv", metadata);
+    await cargarNDJSON(s3Key, metadata);
 
     console.log("\n" + "=".repeat(60));
     console.log("🔄 INICIANDO LECTURA OPTIMIZADA POR CHUNKS");

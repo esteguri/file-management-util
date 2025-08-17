@@ -1,4 +1,3 @@
-import { ArrayProcessor } from "./processors/array-processor/array.processor";
 import { FileProcessor } from "./processors/file-processor/file.processor";
 import { s3Service } from "./services/s3-service";
 
@@ -49,6 +48,46 @@ export async function cargarAS3(
   }
 }
 
+export async function cargarNDJSON(
+  s3Key: string,
+  metadata?: Record<string, string>
+) {
+  const user = {
+    name: "Esteban",
+    age: 30,
+    childrens: [
+      {
+        name: "juli",
+        age: 6,
+      },
+    ],
+  };
+
+  const ndjsonContent = [
+    { ...user, id: 1 },
+    { ...user, id: 2 },
+    { ...user, id: 3 },
+  ]
+    .map((obj) => JSON.stringify(obj))
+    .join("\n");
+
+  const resultado = await s3Service.uploadFile(
+    s3Key,
+    ndjsonContent,
+    "application/ndjson",
+    metadata
+  );
+
+  console.log(`Archivo cargado exitosamente a S3:`);
+  console.log(`- Bucket: ${process.env.BUCKET_NAME}`);
+  console.log(`- Key: ${resultado.key}`);
+  console.log(`- Metadatos: ${JSON.stringify(resultado.metadata)}`);
+
+  // Generar URL prefirmada para acceder al archivo
+  const urlResult = await s3Service.getSignedUrl(s3Key);
+  console.log(`- URL de acceso: ${urlResult.signedUrl}`);
+}
+
 /*interface UserRow {
   id: number;
   name: string;
@@ -94,23 +133,12 @@ export async function leerCSV(s3Key: string) {
   });*/
 
   await FileProcessor.readInChunks(s3Response.Body, {
-    hasHeader: true,
-    batchSize: 10000000,
+    batchSize: 2,
     skipInvalid: true,
-    stopOnChunkError: false,
-    onValidate(row) {
-      return !row.includes("Esteban");
-    },
     onChunk: async (chunk, index) => {
-      await ArrayProcessor.processInChunks(chunk, {
-        batchSize: 100,
-        concurrency: 1,
-        onChunk: async (chunk, index) => {
-          await new Promise((resolve) => setTimeout(resolve, 1));
-        },
-        onFinish: (summary) => {
-          console.log("summary", summary);
-        },
+      console.log("onChunk", {
+        index,
+        chunk: chunk.length,
       });
     },
   });
