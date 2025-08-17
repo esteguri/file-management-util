@@ -1,60 +1,51 @@
 import { ReadStream } from "fs";
 import { Readable } from "stream";
 
-/**
- * Configuration options for basic file processing
- */
-export type FileProcessorOptions = {
+export type FileProcessorCommonOptions = {
   /**
-   * Character encoding for reading the file
+   * File character encoding
    * @default "utf8"
    */
   encoding?: BufferEncoding;
 
   /**
-   * Indicates if the file has a header line that should be processed separately
+   * Whether file has header line
    * @default false
    */
   hasHeader?: boolean;
 
   /**
-   * Callback executed when processing the file header (only if hasHeader is true)
-   * @param header - The header line of the file
+   * Header processing callback
+   * @param header - Header line content
    */
   onHeader?: (header: string) => void | Promise<void>;
 
   /**
-   * Callback executed for each processed row of the file
-   * @param row - The row content as string
-   * @param index - The row index (starting from 0, excluding header if exists)
+   * Row processing callback
+   * @param row - Row content
+   * @param index - Row index (0-based, excludes header)
    */
   onRow?: (row: string, index: number) => void | Promise<void>;
 
   /**
-   * Callback executed when finished processing the entire file
-   * @param totalRows - The total number of processed rows (excluding header)
-   */
-  onFinish?: (totalRows: number) => void | Promise<void>;
-
-  /**
-   * Custom validation function for each row
-   * @param row - The row content to validate
-   * @param index - The row index
-   * @returns true if the row is valid, false otherwise
+   * Row validation function
+   * @param row - Row content
+   * @param index - Row index
+   * @returns Validation result
    */
   onValidate?: (row: string, index: number) => boolean | Promise<boolean>;
 
   /**
-   * If true, invalid rows will be skipped instead of throwing an error
+   * Skip invalid rows instead of throwing error
    * @default false
    */
   skipInvalid?: boolean;
 
   /**
-   * Callback executed when a row fails validation
-   * @param row - The invalid row content
-   * @param index - The invalid row index
-   * @param error - Optional error associated with the validation
+   * Invalid row callback
+   * @param row - Invalid row content
+   * @param index - Row index
+   * @param error - Validation error
    */
   onDataInvalid?: (
     row: string,
@@ -63,48 +54,96 @@ export type FileProcessorOptions = {
   ) => void | Promise<void>;
 
   /**
-   * Callback executed when an unexpected error occurs during processing
-   * @param error - The error that occurred
+   * Error handling callback
+   * @param error - Processing error
    */
   onError?: (error: any) => void | Promise<void>;
 };
 
 /**
- * Extended configuration options for chunk/batch file processing
- * Inherits all properties from FileProcessorOptions
+ * Basic file processing options
  */
-export type FileProcessorChunkOptions = FileProcessorOptions & {
+export type FileProcessorOptions = FileProcessorCommonOptions & {
   /**
-   * Number of rows that make up each chunk/batch
-   * Must be greater than 0
+   * Processing completion callback
+   * @param summary - Processing summary
+   */
+  onFinish?: (summary: ProcessingSummary) => void | Promise<void>;
+};
+
+/**
+ * Chunk-based file processing options
+ */
+export type FileProcessorChunkOptions = FileProcessorCommonOptions & {
+  /**
+   * Rows per chunk (must be > 0)
    */
   batchSize: number;
 
   /**
-   * Callback executed for each chunk/batch of processed rows
-   * @param chunk - Array of strings containing the chunk rows
-   * @param chunkIndex - Chunk index (starting from 0)
+   * Chunk processing callback
+   * @param chunk - Chunk rows
+   * @param chunkIndex - Chunk index (0-based)
    */
   onChunk: (chunk: string[], chunkIndex: number) => void | Promise<void>;
 
   /**
-   * Callback executed when an error occurs while processing a specific chunk
-   * Only executed if stopOnChunkError is false
-   * @param error - The error that occurred during chunk processing
-   * @param chunk - The chunk being processed when the error occurred
+   * Chunk error callback
+   * @param error - Chunk processing error
+   * @param chunk - Failed chunk
    */
   onChunkError?: (error: any, chunk: string[]) => void | Promise<void>;
 
   /**
-   * If true, processing stops when an error occurs in a chunk
-   * If false, continues processing subsequent chunks
-   * @default true
+   * Stop processing on chunk error
+   * @default false
    */
   stopOnChunkError?: boolean;
+
+  /**
+   * Processing completion callback
+   * @param summary - Processing summary
+   */
+  onFinish?: (summary: ProcessingChunkSummary) => void | Promise<void>;
 };
 
 /**
- * Input types supported by the file processor
- * Includes Node.js streams, Web API ReadableStream, and Blob
+ * File processing summary
+ */
+export type ProcessingSummary = {
+  /** Total rows processed */
+  totalRows: number;
+  /** Successfully processed rows */
+  processedRows: number;
+  /** Invalid rows count */
+  invalidRows: number;
+};
+
+/**
+ * Chunk processing summary
+ */
+export type ProcessingChunkSummary = ProcessingSummary & {
+  /** Total chunks processed */
+  totalChunks: number;
+  /** Failed chunks count */
+  failedChunks: number;
+};
+
+/**
+ * Parameters for chunk processing function
+ * @param chunk - Array of string rows in the current chunk
+ * @param chunkIndex - Index of current chunk being processed
+ * @param options - Chunk processing configuration options
+ * @param onError - Error handler callback function
+ */
+export type RunOnChunkParams = {
+  chunk: string[];
+  chunkIndex: number;
+  options: FileProcessorChunkOptions;
+  onError: () => void;
+};
+
+/**
+ * Supported stream input types
  */
 export type StreamInput = ReadStream | ReadableStream | Readable | Blob;

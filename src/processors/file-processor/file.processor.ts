@@ -3,6 +3,7 @@ import { Readable } from "stream";
 import {
   FileProcessorChunkOptions,
   FileProcessorOptions,
+  RunOnChunkParams,
   StreamInput,
 } from "./file.processor.type";
 
@@ -23,7 +24,8 @@ class FileProcessorClass {
     let buffer = "",
       rowIndex = 0,
       isFirstRow = true,
-      totalRows = 0;
+      totalRows = 0,
+      invalidRows = 0;
 
     return new Promise((resolve, reject) => {
       stream.on("data", async (chunk: Buffer | string) => {
@@ -44,10 +46,13 @@ class FileProcessorClass {
               continue;
             }
 
+            totalRows++;
+
             // Validate row if validation callback exists
             if (options.onValidate) {
               const isValid = await options.onValidate(line, rowIndex);
               if (!isValid) {
+                invalidRows++;
                 await options.onDataInvalid?.(line, rowIndex);
                 if (!skipInvalid) {
                   throw new Error(`Invalid data at row ${rowIndex}: ${line}`);
@@ -60,7 +65,6 @@ class FileProcessorClass {
             await options.onRow?.(line, rowIndex);
 
             rowIndex++;
-            totalRows++;
             isFirstRow = false;
           }
         } catch (error) {
@@ -75,21 +79,25 @@ class FileProcessorClass {
             if (options.onValidate) {
               const isValid = await options.onValidate(buffer, rowIndex);
               if (!isValid) {
+                invalidRows++;
                 await options.onDataInvalid?.(buffer, rowIndex);
                 if (!skipInvalid) {
                   throw new Error(`Invalid data at row ${rowIndex}: ${buffer}`);
                 }
               } else {
                 await options.onRow?.(buffer, rowIndex);
-                totalRows++;
               }
             } else {
               await options.onRow?.(buffer, rowIndex);
-              totalRows++;
             }
+            totalRows++;
           }
 
-          await options.onFinish?.(totalRows);
+          await options.onFinish?.({
+            totalRows,
+            invalidRows,
+            processedRows: totalRows - invalidRows,
+          });
 
           resolve();
         } catch (error) {
@@ -117,7 +125,7 @@ class FileProcessorClass {
     const {
       hasHeader = false,
       skipInvalid = false,
-      stopOnChunkError = true,
+      stopOnChunkError = false,
     } = options;
 
     let buffer = "",
@@ -126,6 +134,8 @@ class FileProcessorClass {
       currentChunk: string[] = [],
       isFirstRow = true,
       totalRows = 0,
+      invalidRows = 0,
+      totalChunks = 0,
       failedChunks = 0;
 
     return new Promise((resolve, reject) => {
@@ -147,10 +157,12 @@ class FileProcessorClass {
               continue;
             }
 
+            totalRows++;
             // Validate row if validation callback exists
             if (options.onValidate) {
               const isValid = await options.onValidate(line, rowIndex);
               if (!isValid) {
+                invalidRows++;
                 await options.onDataInvalid?.(line, rowIndex);
                 if (!skipInvalid) {
                   throw new Error(`Invalid data at row ${rowIndex}: ${line}`);
@@ -164,20 +176,21 @@ class FileProcessorClass {
 
             currentChunk.push(line);
             rowIndex++;
-            totalRows++;
             isFirstRow = false;
 
             // Process chunk when it reaches the desired size
             if (currentChunk.length >= options.batchSize) {
-              await this.runOnChunk(currentChunk, chunkIndex, options)
-                .catch((error) => {
-                  failedChunks++;
-                  throw error;
-                })
-                .finally(() => {
-                  currentChunk = [];
-                  chunkIndex++;
-                });
+              totalChunks++;
+
+              await this.runOnChunk({
+                chunk: currentChunk,
+                chunkIndex,
+                options,
+                onError: () => failedChunks++,
+              }).finally(() => {
+                currentChunk = [];
+                chunkIndex++;
+              });
             }
           }
         } catch (error) {
@@ -194,31 +207,42 @@ class FileProcessorClass {
             if (options.onValidate) {
               const isValid = await options.onValidate(buffer, rowIndex);
               if (!isValid) {
-                if (options.onDataInvalid) {
-                  await options.onDataInvalid(buffer, rowIndex);
-                }
+                invalidRows++;
+                await options.onDataInvalid?.(buffer, rowIndex);
                 if (!skipInvalid) {
                   throw new Error(`Invalid data at row ${rowIndex}: ${buffer}`);
                 }
               } else {
                 await options.onRow?.(buffer, rowIndex);
                 currentChunk.push(buffer);
-                totalRows++;
               }
             } else {
               await options.onRow?.(buffer, rowIndex);
               currentChunk.push(buffer);
-              totalRows++;
             }
+
+            totalRows++;
           }
 
           // Process final chunk if it contains data
           if (!stopProcessing && currentChunk.length > 0) {
-            console.log("ultimo chunk", currentChunk);
-            await this.runOnChunk(currentChunk, chunkIndex, options);
+            totalChunks++;
+
+            await this.runOnChunk({
+              chunk: currentChunk,
+              chunkIndex,
+              options,
+              onError: () => failedChunks++,
+            });
           }
 
-          await options.onFinish?.(totalRows);
+          await options.onFinish?.({
+            totalRows,
+            invalidRows,
+            processedRows: totalRows - invalidRows,
+            totalChunks: chunkIndex,
+            failedChunks,
+          });
 
           resolve();
         } catch (error) {
@@ -231,22 +255,20 @@ class FileProcessorClass {
     });
   }
 
-  private static async runOnChunk(
-    chunk: string[],
-    chunkIndex: number,
-    {
-      onChunk,
-      onChunkError,
-      stopOnChunkError = true,
-    }: FileProcessorChunkOptions
-  ) {
+  private static async runOnChunk({
+    chunk,
+    chunkIndex,
+    options,
+    onError,
+  }: RunOnChunkParams) {
     try {
-      await onChunk(chunk, chunkIndex);
+      await options.onChunk(chunk, chunkIndex);
     } catch (error) {
-      if (stopOnChunkError) throw error;
+      onError();
+      if (options.stopOnChunkError) throw error;
 
-      if (onChunkError) {
-        await onChunkError(error, chunk);
+      if (options.onChunkError) {
+        await options.onChunkError(error, chunk);
       } else {
         console.warn(
           `Warning: Error processing chunk ${chunkIndex}. Process continues since stopOnChunkError is false. Consider using onChunkError callback for better error handling. Exception: ${error}`

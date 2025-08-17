@@ -94,14 +94,14 @@ export async function leerCSV(s3Key: string) {
 
   await FileProcessor.readByChunks(s3Response.Body, {
     hasHeader: true,
-    batchSize: 5,
+    batchSize: 10,
     skipInvalid: true,
-    stopOnChunkError: true,
-    onValidate: (row) => {
-      return !row.includes("Esteban");
-    },
+    stopOnChunkError: false,
     onDataInvalid(row, rowNumber) {
       console.log("onDataInvalid", row, rowNumber);
+    },
+    onValidate(row, index) {
+      return !row.includes("Esteban");
     },
     onHeader(header) {
       console.log("onHeader", header);
@@ -109,12 +109,12 @@ export async function leerCSV(s3Key: string) {
     onRow(row, index) {},
     onChunk: (chunk, index) => {
       console.log("onChunk", index, chunk.length);
-      if (index === 2) {
+      if (index === 1) {
         throw Error("invalidad datos en chunk 2");
       }
     },
-    onFinish: (totalRows) => {
-      console.log("onFinish", { totalRows });
+    onFinish: (summary) => {
+      console.log("onFinish", summary);
     },
     onError: (error) => {
       console.error("onError", (error as Error).message);
