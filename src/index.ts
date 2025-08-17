@@ -100,12 +100,11 @@ export async function leerCSV(s3Key: string) {
     stopOnChunkError: false,
     onValidate(row) {
       return !row.includes("Esteban");
-      return true;
     },
     onChunk: async (chunk, index) => {
       await ArrayProcessor.processInChunks(chunk, {
         batchSize: 100,
-        concurrency: 10,
+        concurrency: 1,
         onChunk: async (chunk, index) => {
           await new Promise((resolve) => setTimeout(resolve, 1));
         },
