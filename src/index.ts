@@ -1,3 +1,4 @@
+import { ArrayProcessor } from "./processors/array-processor/array.processor";
 import { FileProcessor } from "./processors/file-processor/file.processor";
 import { s3Service } from "./services/s3-service";
 
@@ -94,30 +95,24 @@ export async function leerCSV(s3Key: string) {
 
   await FileProcessor.readInChunks(s3Response.Body, {
     hasHeader: true,
-    batchSize: 10,
+    batchSize: 10000000,
     skipInvalid: true,
     stopOnChunkError: false,
-    onDataInvalid(row, rowNumber) {
-      console.log("onDataInvalid", row, rowNumber);
-    },
-    onValidate(row, index) {
+    onValidate(row) {
       return !row.includes("Esteban");
+      return true;
     },
-    onHeader(header) {
-      console.log("onHeader", header);
-    },
-    onRow(row, index) {},
-    onChunk: (chunk, index) => {
-      console.log("onChunk", index, chunk.length);
-      if (index === 1) {
-        throw Error("invalidad datos en chunk 2");
-      }
-    },
-    onFinish: (summary) => {
-      console.log("onFinish", summary);
-    },
-    onError: (error) => {
-      console.error("onError", (error as Error).message);
+    onChunk: async (chunk, index) => {
+      await ArrayProcessor.processInChunks(chunk, {
+        batchSize: 100,
+        concurrency: 10,
+        onChunk: async (chunk, index) => {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        },
+        onFinish: (summary) => {
+          console.log("summary", summary);
+        },
+      });
     },
   });
 }

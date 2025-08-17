@@ -43,12 +43,6 @@ export type ChunkProcessorOptions<T> = {
  * Summary of chunk processing results
  */
 export type ProcessingSummary = {
-  /** Number of successfully processed records */
-  processedRecords: number;
-
-  /** Number of records that failed to process */
-  failedRecords: number;
-
   /** Total number of chunks created */
   totalChunks: number;
 

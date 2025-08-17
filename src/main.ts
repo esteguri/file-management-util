@@ -5,7 +5,7 @@ async function probarCsv() {
   // Crear directorio data si no existe
   const dataDir = join(process.cwd(), "data");
   // Ruta al archivo CSV
-  const s3Key = "usuarios.csv";
+  const s3Key = "usuarios-size.csv";
   const csvFilePath = join(dataDir, s3Key);
 
   try {

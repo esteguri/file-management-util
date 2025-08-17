@@ -50,8 +50,6 @@ async function processInChunks<T>(
 
   // Process chunks with concurrency
   let chunkIndex = 0,
-    processedRecords = 0,
-    failedRecords = 0,
     invalidChunks = 0;
 
   const worker = async () => {
@@ -60,10 +58,8 @@ async function processInChunks<T>(
       const chunk = chunks[index];
       try {
         await onChunk(chunk, index);
-        processedRecords += chunk.length;
       } catch (error) {
         invalidChunks++;
-        failedRecords += chunk.length;
         await onChunkError?.(error, chunk, index);
       } finally {
         chunks[index] = [];
@@ -78,8 +74,6 @@ async function processInChunks<T>(
   );
   await Promise.allSettled(workers);
   await onFinish?.({
-    processedRecords,
-    failedRecords,
     totalChunks: chunks.length,
     failedChunks: invalidChunks,
     processedChunks: chunks.length - invalidChunks,
