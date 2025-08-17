@@ -17,11 +17,14 @@ export type FileProcessorCallbacks = {
     index: number,
     error?: any
   ) => void | Promise<void>;
+  onError?: (error: any) => void | Promise<void>;
 };
 
 export type FileProcessorChunkOptions = FileProcessorOptions & {
   batchSize: number;
+  stopOnChunkError?: boolean;
   onChunk: (chunk: string[], chunkIndex: number) => void | Promise<void>;
+  onChunkError?: (error: any, chunk: string[]) => void | Promise<void>;
 };
 
 export type StreamInput = ReadStream | ReadableStream | Readable | Blob;

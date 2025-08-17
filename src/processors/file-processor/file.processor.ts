@@ -93,6 +93,7 @@ class FileProcessorClass {
 
           resolve();
         } catch (error) {
+          options.onError?.(error);
           reject(error);
         }
       });
@@ -161,9 +162,10 @@ class FileProcessorClass {
             totalRows++;
             isFirstRow = false;
 
-            // Procesar chunk cuando alcance el tamaño deseado
+            // Process chunk when it reaches the desired size
             if (currentChunk.length >= options.batchSize) {
-              await options.onChunk([...currentChunk], chunkIndex);
+              await this.runOnChunk(currentChunk, chunkIndex, options);
+
               currentChunk = [];
               chunkIndex++;
             }
@@ -200,21 +202,44 @@ class FileProcessorClass {
 
           // Process final chunk if it contains data
           if (currentChunk.length > 0) {
-            await options.onChunk([...currentChunk], chunkIndex);
+            await this.runOnChunk(currentChunk, chunkIndex, options);
           }
 
           await options.onFinish?.(totalRows);
 
           resolve();
         } catch (error) {
+          options.onError?.(error);
           reject(error);
         }
       });
 
-      stream.on("error", (error) => {
-        reject(error);
-      });
+      stream.on("error", (error) => reject(error));
     });
+  }
+
+  private static async runOnChunk(
+    chunk: string[],
+    chunkIndex: number,
+    {
+      onChunk,
+      onChunkError,
+      stopOnChunkError = true,
+    }: FileProcessorChunkOptions
+  ) {
+    try {
+      await onChunk(chunk, chunkIndex);
+    } catch (error) {
+      if (stopOnChunkError) throw error;
+
+      if (onChunkError) {
+        await onChunkError(error, chunk);
+      } else {
+        console.warn(
+          `Warning: Error processing chunk ${chunkIndex}. Process continues since stopOnChunkError is false. Consider using onChunkError callback for better error handling. Exception: ${error}`
+        );
+      }
+    }
   }
 
   /**
