@@ -113,7 +113,7 @@ class FileProcessorClass {
   /**
    * Reads the file in chunks/batches of specific size
    */
-  public static async readByChunks(
+  public static async readInChunks(
     input: StreamInput,
     options: FileProcessorChunkOptions
   ): Promise<void> {
@@ -300,5 +300,5 @@ class FileProcessorClass {
 
 export const FileProcessor = {
   read: FileProcessorClass.read.bind(FileProcessorClass),
-  readByChunks: FileProcessorClass.readByChunks.bind(FileProcessorClass),
+  readInChunks: FileProcessorClass.readInChunks.bind(FileProcessorClass),
 };
