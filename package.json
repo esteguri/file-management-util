@@ -25,8 +25,8 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.864.0",
-    "@aws-sdk/s3-request-presigner": "^3.864.0",
+    "@aws-sdk/client-s3": "^3.980.0",
+    "@aws-sdk/s3-request-presigner": "^3.980.0",
     "dotenv": "^17.2.1",
     "fast-csv": "^5.0.5"
   }
